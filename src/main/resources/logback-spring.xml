@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <property name="LOGS" value="./logs" />
+
+    <!-- Console Appender -->
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%magenta(%d{yyyy-MM-dd HH:mm:ss.SSS}) %highlight(%-5level){FATAL=red blink, ERROR=red, WARN=yellow, INFO=blue, DEBUG=cyan, TRACE=green} %green(%class{0}) - %green(%line) - %msg%n%throwable</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender dengan Rolling harian + max ukuran 10MB -->
+    <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS}/app.log</file>
+        <encoder>
+            <!-- Format log untuk file (tanpa warna) -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %class{0} - %line - %msg%n</pattern>
+        </encoder>
+
+        <!-- Rolling Policy gabungan waktu + ukuran -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- %d = per hari, %i = increment file dalam 1 hari -->
+            <fileNamePattern>${LOGS}/archived/app-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <!-- Maks ukuran per file log -->
+            <maxFileSize>10MB</maxFileSize>
+            <!-- Simpan log selama 60 hari -->
+            <maxHistory>60</maxHistory>
+        </rollingPolicy>
+
+        <!-- Tambahkan filter supaya RollingFile hanya simpan INFO ke atas -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- Root: tetap INFO -->
+    <root level="info">
+        <appender-ref ref="RollingFile" />
+        <appender-ref ref="Console" />
+    </root>
+
+    <!-- Logger khusus com.sosmed -->
+    <logger name="com.sosmed" level="debug" additivity="false">
+        <appender-ref ref="RollingFile" />
+        <appender-ref ref="Console" />
+    </logger>
+
+</configuration>

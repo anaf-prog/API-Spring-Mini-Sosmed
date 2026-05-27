@@ -1,0 +1,143 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.14'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.graalvm.buildtools.native' version '0.10.3'
+}
+
+group = 'com.sosmed'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+	implementation 'com.cloudinary:cloudinary-http5:2.3.2'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-scalar:2.8.17'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'org.postgresql:postgresql'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testCompileOnly 'org.projectlombok:lombok'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+tasks.named('bootJar') {
+	enabled = false
+}
+
+def counterFile = file("$rootDir/build-counter.txt")
+def buildVersionProvider = providers.provider { 
+    project.ext.has("buildVersion") ? project.ext.buildVersion : "UNSET" 
+}
+
+tasks.register('updateBuildCounter') {
+	// Selalu jalan tiap build biar counter naik
+	outputs.upToDateWhen { false }
+	doLast {
+		def buildDate = new Date().format('yyyyMMdd')
+		def buildNumber = 1
+
+		if (counterFile.exists()) {
+			def parts = counterFile.text.trim().split('\\s+')
+			if (parts.size() == 2 && parts[0] == buildDate) {
+				buildNumber = (parts[1] as int) + 1
+			}
+		}
+
+		def buildVersion = "${buildDate}-${buildNumber}"
+		counterFile.text = "${buildDate} ${buildNumber}"
+		project.ext.buildVersion = buildVersion
+	}
+}
+
+tasks.named('jar') {
+	dependsOn 'updateBuildCounter'
+	enabled = true
+	archiveBaseName = 'Sosmed'
+	archiveClassifier = ''
+	archiveVersion = buildVersionProvider
+	inputs.property('buildVersion', buildVersionProvider)
+
+	manifest {
+		attributes(
+				'Main-Class': 'com.sosmed.SosmedApplication',
+				'Class-Path': configurations.runtimeClasspath.files.collect {
+					"lib/${it.name}"
+				}.join(' ')
+		)
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+tasks.register('copyDependencies', Copy) {
+	from configurations.runtimeClasspath.filter {
+        !it.name.contains('spring-boot-devtools')
+    }
+	into "$rootDir/install/lib"
+}
+
+tasks.register('copyJar', Copy) {
+	dependsOn tasks.named('jar')
+	from(tasks.named('jar').flatMap { it.archiveFile })
+	into "$rootDir/install"
+}
+
+tasks.register('copyConfig', Copy) {
+	from 'src/main/resources'
+	include '**/*.yml', '**/*.properties', '**/*.xml', '**/*.sql'
+	exclude 'META-INF/**'
+	exclude 'static/**'
+	exclude 'templates/**'
+	into "$rootDir/install/config"
+}
+
+tasks.register('installApp') {
+	dependsOn 'copyDependencies', 'copyJar', 'copyConfig'
+	doLast {
+        def appProps = file("$rootDir/install/config/application.properties")
+        def content = appProps.text
+        content = content.replace(
+            'logging.config=classpath:logback-spring.xml',
+            '# logging.config=classpath:logback-spring.xml\nlogging.config=file:./config/logback-spring.xml'
+        )
+		content = content.replace(
+            'spring.sql.init.mode=always',
+            'spring.sql.init.mode=always\nspring.sql.init.schema-locations=file:./config/schema.sql'
+        )
+        appProps.text = content
+    }
+}
+
+tasks.register('cleanInstall', Delete) {
+	delete "$rootDir/install"
+}
+
+tasks.named('clean') {
+	dependsOn 'cleanInstall'
+}
+
+tasks.named('build') {
+	finalizedBy 'installApp'
+}
