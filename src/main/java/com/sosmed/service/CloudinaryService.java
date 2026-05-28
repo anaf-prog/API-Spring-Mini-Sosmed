@@ -2,9 +2,11 @@ package com.sosmed.service;
 
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
@@ -65,7 +67,23 @@ public class CloudinaryService {
 
         } catch (Exception e) {
             log.error("Gagal mengunggah gambar postingan ke Cloudinary: {}", e.getMessage(), e);
-            throw new RuntimeException("Gagal mengunggah gambar", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error.");
+        }
+    }
+
+    /**
+     * Menghapus gambar postingan secara SINKRON dari Cloudinary berdasarkan Public
+     * ID.
+     * Digunakan saat edit/update postingan atau hapus postingan.
+     */
+    public Map deletePostImage(String oldImageId) {
+        try {
+            log.info("Menghapus gambar postingan dari Cloudinary untuk Public ID: {}", oldImageId);
+            return cloudinary.uploader().destroy(oldImageId, ObjectUtils.emptyMap());
+
+        } catch (Exception e) {
+            log.error("Gagal menghapus gambar postingan dari Cloudinary untuk Public ID {}: {}", oldImageId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error.");
         }
     }
     
