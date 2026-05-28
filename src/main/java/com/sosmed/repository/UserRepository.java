@@ -3,11 +3,14 @@ package com.sosmed.repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.sosmed.model.User;
 
@@ -201,6 +204,139 @@ public class UserRepository {
             .addValue("offset", offset);
 
         return namedParameterJdbcTemplate.query(sql, params, new BeanPropertyRowMapper<>(User.class));
+    }
+
+    /**
+     * Menaikkan jumlah post_count
+     */
+    public boolean incrementPostCount(Long userId) {
+        String sql = """
+                        UPDATE users
+                        SET post_count = post_count + 1,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :userId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal increment post_count untuk User ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menurunkan jumlah post_count
+     * Dipastikan nilainya tidak akan minus di bawah 0 menggunakan fungsi GREATEST.
+     */
+    public boolean decrementPostCount(Long userId) {
+        String sql = """
+                        UPDATE users
+                        SET post_count = GREATEST(post_count - 1, 0),
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :userId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal decrement post_count untuk User ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menaikkan jumlah following_count
+     */
+    public boolean incrementFollowingCount(Long userId) {
+        String sql = """
+                        UPDATE users
+                        SET following_count = following_count + 1,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :userId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal increment following_count untuk User ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menurunkan jumlah Following_count
+     */
+    public boolean decrementFollowingCount(Long userId) {
+        String sql = """
+                        UPDATE users
+                        SET following_count = GREATEST(following_count - 1, 0),
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :userId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal decrement following_count untuk User ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menaikkan jumlah follower_count
+     */
+    public boolean incrementFollowerCount(Long userId) {
+        String sql = """
+                        UPDATE users
+                        SET follower_count = follower_count + 1,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :userId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal increment follower_count untuk User ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menurunkan jumlah follower_count
+     */
+    public boolean decrementFollowerCount(Long userId) {
+        String sql = """
+                        UPDATE users
+                        SET follower_count = GREATEST(follower_count - 1, 0),
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :userId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal decrement follower_count untuk User ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
     }
     
 }
