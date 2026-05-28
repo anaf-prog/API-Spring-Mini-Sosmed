@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS comments (
     content TEXT,
     user_id BIGINT NOT NULL,
     post_id BIGINT NOT NULL,
+    image TEXT,
+    image_id VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_comment_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
