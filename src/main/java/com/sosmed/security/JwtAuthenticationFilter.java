@@ -16,9 +16,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -73,6 +75,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             // Jika token tidak valid / expired, biarkan request berlanjut tanpa otentikasi
             // Nantinya Spring Security otomatis menolak di SecurityConfig
+            log.error("Token tidak valid {}: ", e.getMessage(), e);
         }
 
         filterChain.doFilter(request, response);
