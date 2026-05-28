@@ -15,6 +15,7 @@ import com.sosmed.dto.post.PostDetailResponse;
 import com.sosmed.dto.post.PostRequest;
 import com.sosmed.dto.post.PostResponse;
 import com.sosmed.repository.PostRepository;
+import com.sosmed.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
 
     @Transactional
@@ -67,6 +69,14 @@ public class PostService {
         if (generatedPostId == null) {
             log.error("Gagal membuat postingan.");
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Gagal membuat postingan.");
+        }
+
+        // Update data tabel user (Increment post_count)
+        log.debug("Menaikkan jumlah post_count untuk User ID {}", userId);
+        boolean isIncrementSuccess = userRepository.incrementPostCount(userId);
+        if (!isIncrementSuccess) {
+            log.error("Gagal memperbarui total postingan pada User ID {}", userId);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
 
         // Ambil data utuh hasil insert (termasuk join dengan data user) 
@@ -304,6 +314,14 @@ public class PostService {
         boolean isDeleted = postRepository.deleteById(postId);
         if (!isDeleted) {
             log.error("Gagal menghapus baris data postingan di database.");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+
+        // Update data tabel user (Decrement post_count)
+        log.debug("Menurunkan jumlah post_count untuk User ID {}", userId);
+        boolean isDecrementSuccess = userRepository.decrementPostCount(userId);
+        if (!isDecrementSuccess) {
+            log.error("Gagal menurunkan post_count pada user ID {}", userId);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
 
