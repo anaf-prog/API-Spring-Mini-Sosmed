@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.sosmed.dto.ApiResponse;
-import com.sosmed.dto.post.PageResponse;
+import com.sosmed.dto.PagingResponse;
 import com.sosmed.dto.post.PostCommentResponse;
 import com.sosmed.dto.post.PostDetailResponse;
 import com.sosmed.dto.post.PostRequest;
@@ -169,7 +169,7 @@ public class PostService {
     /**
      * Mengambil semua data postingan milik user tertentu dengan paginasi.
      */
-    public ApiResponse<PageResponse<PostResponse>> getUserPosts(Long userId, int page, int size) {
+    public ApiResponse<List<PostResponse>> getUserPosts(Long userId, int page, int size) {
         log.info("Mengambil postingan milik user ID: {} dengan page: {} dan size: {}", userId, page, size);
 
         // Hitung total data postingan milik user tersebut
@@ -184,26 +184,26 @@ public class PostService {
         // Hitung total halaman
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
-        // Susun metadata paginasi ke dalam PageResponse DTO
-        PageResponse<PostResponse> pageData = PageResponse.<PostResponse>builder()
-            .content(posts)
-            .page(page)
+        // Susun metadata paginasi ke dalam PagingResponse DTO
+        PagingResponse paging = PagingResponse.builder()
+            .currentPage(page)
             .size(size)
             .totalElements(totalElements)
             .totalPages(totalPages)
             .build();
 
-        return ApiResponse.<PageResponse<PostResponse>>builder()
+        return ApiResponse.<List<PostResponse>>builder()
             .status(HttpStatus.OK.value())
             .message("Berhasil mengambil postingan user")
-            .data(pageData)
+            .paging(paging)
+            .data(posts)
             .build();
     }
 
     /**
      * Mengambil semua postingan dari seluruh user di aplikasi secara berurutan dan terpaginasi.
      */
-    public ApiResponse<PageResponse<PostResponse>> getGlobalFeed(int page, int size) {
+    public ApiResponse<List<PostResponse>> getGlobalFeed(int page, int size) {
         log.info("Mengambil global feed. Page: {}, Size: {}", page, size);
 
         // Hitung total seluruh postingan yang ada di database aplikasi
@@ -218,19 +218,19 @@ public class PostService {
         // Hitung total halaman yang dihasilkan
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
-        // Bungkus data dan metadatanya ke dalam PageResponse DTO
-        PageResponse<PostResponse> pageData = PageResponse.<PostResponse>builder()
-            .content(posts)
-            .page(page)
+        // Bungkus metadata paginasi ke dalam PagingResponse DTO
+        PagingResponse paging = PagingResponse.builder()
+            .currentPage(page)
             .size(size)
             .totalElements(totalElements)
             .totalPages(totalPages)
             .build();
 
-        return ApiResponse.<PageResponse<PostResponse>>builder()
+        return ApiResponse.<List<PostResponse>>builder()
             .status(HttpStatus.OK.value())
-            .message("Berhasil mengambil global feed postingan")
-            .data(pageData)
+            .message("Berhasil mengambil global postingan")
+            .paging(paging)
+            .data(posts)
             .build();
     }
 
@@ -256,19 +256,19 @@ public class PostService {
         // Hitung total halaman komentar
         int totalCommentPages = (int) Math.ceil((double) totalComments / commentSize);
 
-        // Bungkus komentar ke dalam struktur PageResponse
-        PageResponse<PostCommentResponse> commentPageData = PageResponse.<PostCommentResponse>builder()
-            .content(comments)
-            .page(commentPage)
+        // Bungkus metadata paginasi komentar ke dalam PagingResponse
+        PagingResponse paging = PagingResponse.builder()
+            .currentPage(commentPage)
             .size(commentSize)
             .totalElements(totalComments)
             .totalPages(totalCommentPages)
             .build();
 
-        // Satukan objek post dan data komentar terpaginasi ke dalam PostDetailResponse
+        // Satukan objek post, data komentar, dan paging ke dalam PostDetailResponse
         PostDetailResponse detailResponse = PostDetailResponse.builder()
             .post(post)
-            .comments(commentPageData)
+            .comments(comments)
+            .paging(paging)
             .build();
 
         return ApiResponse.<PostDetailResponse>builder()

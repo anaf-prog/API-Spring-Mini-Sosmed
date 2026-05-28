@@ -1,5 +1,7 @@
 package com.sosmed.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +20,6 @@ import org.springframework.web.server.ResponseStatusException;
 import com.sosmed.security.CustomUserDetails;
 
 import com.sosmed.dto.ApiResponse;
-import com.sosmed.dto.post.PageResponse;
 import com.sosmed.dto.post.PostDetailResponse;
 import com.sosmed.dto.post.PostRequest;
 import com.sosmed.dto.post.PostResponse;
@@ -65,7 +66,7 @@ public class PostController {
      * URL Contoh: /api/post/me?page=0&size=10
      */
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<PageResponse<PostResponse>>> getMyPosts(
+    public ResponseEntity<ApiResponse<List<PostResponse>>> getMyPosts(
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             Authentication authentication) {
@@ -78,7 +79,7 @@ public class PostController {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         Long userId = userDetails.getId();
 
-        ApiResponse<PageResponse<PostResponse>> response = postService.getUserPosts(userId, page, size);
+        ApiResponse<List<PostResponse>> response = postService.getUserPosts(userId, page, size);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
@@ -112,7 +113,7 @@ public class PostController {
      * Mengambil halaman linimasa / explore global Postingan milik semua orang.
      */
     @GetMapping("/all-feed")
-    public ResponseEntity<ApiResponse<PageResponse<PostResponse>>> getGlobalFeed(
+    public ResponseEntity<ApiResponse<List<PostResponse>>> getGlobalFeed(
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             Authentication authentication) {
@@ -123,7 +124,7 @@ public class PostController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Silahkan login terlebih dahulu!");
         }
 
-        ApiResponse<PageResponse<PostResponse>> response = postService.getGlobalFeed(page, size);
+        ApiResponse<List<PostResponse>> response = postService.getGlobalFeed(page, size);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
