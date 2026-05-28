@@ -248,6 +248,8 @@ public class PostRepository {
                         SELECT
                             c.id AS comment_id,
                             c.content AS comment_content,
+                            c.image AS comment_image,
+                            c.image_id AS comment_image_id,
                             c.created_at AS comment_created_at,
                             c.updated_at AS comment_updated_at,
 
@@ -271,6 +273,8 @@ public class PostRepository {
             return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> PostCommentResponse.builder()
                 .id(rs.getLong("comment_id"))
                 .content(rs.getString("comment_content"))
+                .image(rs.getString("comment_image"))
+                .imageId(rs.getString("comment_image_id"))
                 .createdAt(rs.getTimestamp("comment_created_at") != null
                     ? ZonedDateTime.ofInstant(rs.getTimestamp("comment_created_at").toInstant(), ZoneId.systemDefault())
                     : null)
@@ -287,6 +291,95 @@ public class PostRepository {
                 .build());
         } catch (Exception e) {
             log.error("Gagal mengambil komentar untuk post ID {}: {}", postId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menaikkan jumlah hitungan komentar (comment_count) sebanyak +1 pada postingan tertentu.
+     */
+    public boolean incrementCommentCount(Long postId) {
+        String sql = """
+                        UPDATE posts
+                        SET comment_count = comment_count + 1,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :postId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("postId", postId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal increment comment_count untuk Post ID {}: {}", postId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menurunkan jumlah hitungan komentar (comment_count) sebanyak -1 pada postingan tertentu.
+     * Dipastikan nilainya tidak akan minus di bawah 0 menggunakan fungsi GREATEST.
+     */
+    public boolean decrementCommentCount(Long postId) {
+        String sql = """
+                        UPDATE posts
+                        SET comment_count = GREATEST(comment_count - 1, 0),
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :postId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("postId", postId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal decrement comment_count untuk Post ID {}: {}", postId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menaikkan jumlah like
+     */
+    public boolean incrementLikeCount(Long postId) {
+        String sql = """
+                        UPDATE posts
+                        SET like_count = like_count + 1,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :postId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("postId", postId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal memperbarui comment_count untuk Post ID {}: {}", postId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menurunkan jumlah like
+     */
+    public boolean decrementLikeCount(Long postId) {
+        String sql = """
+                        UPDATE posts
+                        SET like_count = GREATEST(like_count - 1, 0),
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = :postId
+                    """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("postId", postId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal decrement comment_count untuk Post ID {}: {}", postId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
     }
