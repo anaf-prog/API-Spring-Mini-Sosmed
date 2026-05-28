@@ -1,5 +1,6 @@
 package com.sosmed.service;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -8,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.sosmed.dto.ApiResponse;
+import com.sosmed.dto.PagingResponse;
 import com.sosmed.dto.comment.CommentRequest;
 import com.sosmed.dto.comment.CommentResponse;
 import com.sosmed.dto.post.PostResponse;
@@ -163,6 +165,32 @@ public class CommentService {
             .data(updateCommentResponse)
             .build();
 
+    }
+
+    @Transactional(readOnly = true)
+    public ApiResponse<List<CommentResponse>> getUserCommentHistory(Long userId, int page, int size) {
+        log.info("Mengambil riwayat komentar untuk User ID: {} dengan page: {} dan size: {}", userId, page, size);
+
+        // Ambil data komentar terpaginasi
+        List<CommentResponse> comments = commentRepository.findCommentsByUserId(userId, page, size);
+        
+        // Hitung total elemen untuk kalkulasi paging info
+        long totalElements = commentRepository.countCommentsByUserId(userId);
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+
+        PagingResponse paging = PagingResponse.builder()
+            .currentPage(page)
+            .size(size)
+            .totalElements(totalElements)
+            .totalPages(totalPages)
+            .build();
+
+        return ApiResponse.<List<CommentResponse>>builder()
+            .status(HttpStatus.OK.value())
+            .message("Berhasil mengambil riwayat komentar")
+            .paging(paging)
+            .data(comments)
+            .build();
     }
 
     /**

@@ -1,14 +1,18 @@
 package com.sosmed.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -79,6 +83,27 @@ public class CommentController {
             .build();
 
         ApiResponse<CommentResponse> response = commentService.editComment(commentId, userId, request);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    /**
+     * Mengambil semua riwayat komentar milik user yang sedang login (Terpaginasi)
+     */
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<List<CommentResponse>>> getUserCommentHistory(
+            @RequestParam(value = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(value = "size", required = false, defaultValue = "10") int size,
+            Authentication authentication) {
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            log.error("Autentikasi gagal saat mengakses riwayat komentar.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Silahkan login terlebih dahulu!");
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Long userId = userDetails.getId();
+
+        ApiResponse<List<CommentResponse>> response = commentService.getUserCommentHistory(userId, page, size);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 

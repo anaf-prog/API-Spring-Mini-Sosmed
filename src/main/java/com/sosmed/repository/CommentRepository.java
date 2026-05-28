@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -111,6 +112,61 @@ public class CommentRepository {
             return rowsAffected > 0;
         } catch (Exception e) {
             log.error("Gagal memperbarui data comment ID {}: {}", commentId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Mengambil daftar komentar milik user tertentu dengan paginasi.
+     */
+    public List<CommentResponse> findCommentsByUserId(Long userId, int page, int size) {
+        String sql = """
+                            SELECT 
+                                c.id AS comment_id,
+                                c.post_id,
+                                c.content,
+                                c.image AS comment_image,
+                                c.image_id AS comment_image_id,
+                                c.created_at AS comment_created_at,
+                                c.updated_at AS comment_updated_at,
+                                
+                                u.id AS user_id,
+                                u.fullname,
+                                u.username,
+                                u.image AS user_image
+                            FROM comments c
+                            JOIN users u ON c.user_id = u.id
+                            WHERE c.user_id = :userId
+                            ORDER BY c.created_at DESC
+                            LIMIT :limit OFFSET :offset
+                        """;
+
+        int offset = page * size;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+            .addValue("userId", userId)
+            .addValue("limit", size)
+            .addValue("offset", offset);
+
+        try {
+            return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> mapRowToCommentResponse(rs));
+        } catch (Exception e) {
+            log.error("Gagal mengambil daftar komentar user ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menghitung total seluruh komentar yang dimiliki oleh user tertentu.
+     */
+    public long countCommentsByUserId(Long userId) {
+        String sql = "SELECT COUNT(*) FROM comments WHERE user_id = :userId";
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+        try {
+            Long count = namedParameterJdbcTemplate.queryForObject(sql, params, Long.class);
+            return count != null ? count : 0L;
+        } catch (Exception e) {
+            log.error("Gagal menghitung total komentar user ID {}: {}", userId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
     }
