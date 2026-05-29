@@ -24,6 +24,7 @@ public class User{
     private Long followerCount;
     private Long followingCount;
     private Long postCount;
+    private Long bookmarkCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     

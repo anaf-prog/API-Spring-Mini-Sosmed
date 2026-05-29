@@ -25,6 +25,7 @@ public class UserResponse {
     private Long followingCount;
     private Long followerCount;
     private Long postCount;
+    private Long bookmarkCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     

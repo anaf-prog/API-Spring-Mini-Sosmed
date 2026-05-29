@@ -49,6 +49,7 @@ public class UserService {
             .followerCount(user.getFollowerCount())
             .followingCount(user.getFollowingCount())
             .postCount(user.getPostCount())
+            .bookmarkCount(user.getBookmarkCount())
             .createdAt(user.getCreatedAt())
             .build();
             
@@ -139,6 +140,7 @@ public class UserService {
             .followerCount(updatedUser.getFollowerCount())
             .followingCount(updatedUser.getFollowingCount())
             .postCount(updatedUser.getPostCount())
+            .bookmarkCount(updatedUser.getBookmarkCount())
             .createdAt(updatedUser.getCreatedAt())
             .updatedAt(updatedUser.getUpdatedAt())
             .build();
@@ -175,6 +177,7 @@ public class UserService {
             .followerCount(user.getFollowerCount())
             .followingCount(user.getFollowingCount())
             .postCount(user.getPostCount())
+            .bookmarkCount(user.getBookmarkCount())
             .createdAt(user.getCreatedAt())
             .build()
         ).collect(Collectors.toList());
