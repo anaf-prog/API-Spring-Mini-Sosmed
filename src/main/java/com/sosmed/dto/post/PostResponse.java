@@ -22,6 +22,7 @@ public class PostResponse {
     private String imageId;
     private Long commentCount;
     private Long likeCount;
+    private Long bookmarkCount;
     private ZonedDateTime createdAt;
     private ZonedDateTime updatedAt;
     private UserPostResponse user;

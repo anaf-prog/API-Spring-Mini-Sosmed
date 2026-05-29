@@ -96,6 +96,7 @@ public class PostRepository {
                             p.image_id AS post_image_id,
                             p.comment_count,
                             p.like_count,
+                            p.bookmark_count,
                             p.created_at AS post_created_at,
                             p.updated_at AS post_updated_at,
                             
@@ -146,6 +147,7 @@ public class PostRepository {
                             posts.image_id AS post_image_id,
                             posts.comment_count,
                             posts.like_count,
+                            posts.bookmark_count,
                             posts.created_at AS post_created_at,
                             posts.updated_at AS post_updated_at,
 
@@ -200,6 +202,7 @@ public class PostRepository {
                             posts.image_id AS post_image_id,
                             posts.comment_count,
                             posts.like_count,
+                            posts.bookmark_count,
                             posts.created_at AS post_created_at,
                             posts.updated_at AS post_updated_at,
 
@@ -357,7 +360,7 @@ public class PostRepository {
             int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
             return rowsAffected > 0;
         } catch (Exception e) {
-            log.error("Gagal memperbarui comment_count untuk Post ID {}: {}", postId, e.getMessage(), e);
+            log.error("Gagal memperbarui like_count untuk Post ID {}: {}", postId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
     }
@@ -379,7 +382,51 @@ public class PostRepository {
             int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
             return rowsAffected > 0;
         } catch (Exception e) {
-            log.error("Gagal decrement comment_count untuk Post ID {}: {}", postId, e.getMessage(), e);
+            log.error("Gagal decrement like_count untuk Post ID {}: {}", postId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menaikkan jumlah bookmark
+     */
+    public boolean incrementBookmarkCount(Long postId) {
+        String sql = """
+                    UPDATE posts
+                    SET bookmark_count = bookmark_count + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :postId
+                """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("postId", postId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal memperbarui bookmark_count untuk Post ID {}: {}", postId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menurunkan jumlah bookmark
+     */
+    public boolean decrementBookmarkCount(Long postId) {
+        String sql = """
+                    UPDATE posts
+                    SET bookmark_count = GREATEST(bookmark_count - 1, 0),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :postId
+                """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("postId", postId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal decrement bookmark_count untuk Post ID {}: {}", postId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
     }
@@ -427,6 +474,7 @@ public class PostRepository {
             .imageId(rs.getString("post_image_id"))
             .commentCount(rs.getLong("comment_count"))
             .likeCount(rs.getLong("like_count"))
+            .bookmarkCount(rs.getLong("bookmark_count"))
             .createdAt(rs.getTimestamp("post_created_at") != null ? 
                     ZonedDateTime.ofInstant(rs.getTimestamp("post_created_at").toInstant(), ZoneId.systemDefault()) : null)
             .updatedAt(rs.getTimestamp("post_updated_at") != null ? 
