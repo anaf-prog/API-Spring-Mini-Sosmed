@@ -339,5 +339,49 @@ public class UserRepository {
         }
     }
     
+    /**
+     * Menaikkan jumlah bookmark
+     */
+    public boolean incrementBookmarkCount(Long userId) {
+        String sql = """
+                    UPDATE users
+                    SET bookmark_count = bookmark_count + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :userId
+                """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal increment bookmark_count untuk User ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+
+    /**
+     * Menurunkan jumlah bookmark_count
+     */
+    public boolean decrementBookmarkCount(Long userId) {
+        String sql = """
+                    UPDATE users
+                    SET bookmark_count = GREATEST(bookmark_count - 1, 0),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :userId
+                """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        try {
+            int rowsAffected = namedParameterJdbcTemplate.update(sql, params);
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            log.error("Gagal decrement bookmark_count untuk User ID {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
+        }
+    }
+    
 }
 
