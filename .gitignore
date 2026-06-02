@@ -43,9 +43,6 @@ install/
 ### logs ###
 logs/
 
-### test ###
-test/
-
 ### txt ###
 *.txt
 !banner.txt
