@@ -7,10 +7,12 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -27,6 +29,79 @@ import lombok.extern.slf4j.Slf4j;
 public class PostRepository { 
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    /**
+     * RowMapper Manual Statis untuk PostResponse.
+     */
+    private final RowMapper<PostResponse> postResponseRowMapper = new RowMapper<PostResponse>() {
+        @Override
+        public PostResponse mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
+            String userImageRaw = rs.getString("user_image");
+            String usernameRaw = rs.getString("username");
+
+            // Logika Fallback Dicebear
+            String userImageFinal = userImageRaw != null ? userImageRaw
+                : "https://api.dicebear.com/7.x/initials/svg?seed=" + usernameRaw;
+
+            // 1. Ekstrak data user dan masukkan ke UserPostResponse DTO
+            UserPostResponse user = UserPostResponse.builder()
+                .id(rs.getLong("user_id"))
+                .fullname(rs.getString("fullname"))
+                .username(rs.getString("username"))
+                .image(userImageFinal)
+                .build();
+
+            // 2. Ekstrak data post dan pasang objek user di dalamnya
+            return PostResponse.builder()
+                .id(rs.getLong("post_id"))
+                .caption(rs.getString("caption"))
+                .image(rs.getString("post_image"))
+                .imageId(rs.getString("post_image_id"))
+                .commentCount(rs.getLong("comment_count"))
+                .likeCount(rs.getLong("like_count"))
+                .bookmarkCount(rs.getLong("bookmark_count"))
+                .createdAt(rs.getTimestamp("post_created_at") != null
+                    ? ZonedDateTime.ofInstant(rs.getTimestamp("post_created_at").toInstant(),
+                        ZoneId.systemDefault())
+                    : null)
+                .updatedAt(rs.getTimestamp("post_updated_at") != null
+                    ? ZonedDateTime.ofInstant(rs.getTimestamp("post_updated_at").toInstant(),
+                        ZoneId.systemDefault())
+                    : null)
+                .user(user) // Menggabungkan relasi JOIN
+                .build();
+        }
+    };
+
+    /**
+     * RowMapper Manual Statis untuk PostCommentResponse.
+     */
+    private final RowMapper<PostCommentResponse> commentResponseRowMapper = new RowMapper<PostCommentResponse>() {
+        @Override
+        public PostCommentResponse mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
+            return PostCommentResponse.builder()
+                .id(rs.getLong("comment_id"))
+                .content(rs.getString("comment_content"))
+                .image(rs.getString("comment_image"))
+                .imageId(rs.getString("comment_image_id"))
+                .createdAt(rs.getTimestamp("comment_created_at") != null
+                    ? ZonedDateTime.ofInstant(rs.getTimestamp("comment_created_at").toInstant(),
+                        ZoneId.systemDefault())
+                    : null)
+                .updatedAt(rs.getTimestamp("comment_updated_at") != null
+                    ? ZonedDateTime.ofInstant(rs.getTimestamp("comment_updated_at").toInstant(),
+                        ZoneId.systemDefault())
+                    : null)
+                .user(UserPostResponse.builder()
+                    .id(rs.getLong("user_id"))
+                    .fullname(rs.getString("fullname"))
+                    .username(rs.getString("username"))
+                    .image(rs.getString("user_image") != null ? rs.getString("user_image")
+                            : "https://api.dicebear.com/7.x/initials/svg?seed=" + rs.getString("username"))
+                    .build())
+                .build();
+        }
+    };
 
     /**
      * Menyimpan postingan baru ke dalam database dan mengembalikan ID yang digenerate.
@@ -112,7 +187,7 @@ public class PostRepository {
         MapSqlParameterSource params = new MapSqlParameterSource("postId", postId);
 
         try {
-            return namedParameterJdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> mapRowToPostResponse(rs));
+            return namedParameterJdbcTemplate.queryForObject(sql, params, postResponseRowMapper);
         } catch (Exception e) {
             log.error("Gagal mengambil detail postingan untuk ID {}: {}", postId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
@@ -168,7 +243,7 @@ public class PostRepository {
             .addValue("offset", offset);
 
         try {
-            return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> mapRowToPostResponse(rs));
+            return namedParameterJdbcTemplate.query(sql, params, postResponseRowMapper);
         } catch (Exception e) {
             log.error("Gagal mengambil list postingan milik user ID {}: {}", userId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
@@ -221,7 +296,7 @@ public class PostRepository {
             .addValue("offset", offset);
 
         try {
-            return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> mapRowToPostResponse(rs));
+            return namedParameterJdbcTemplate.query(sql, params, postResponseRowMapper);
         } catch (Exception e) {
             log.error("Gagal mengambil data postingan global feed: {}", e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
@@ -273,25 +348,7 @@ public class PostRepository {
             .addValue("offset", offset);
 
         try {
-            return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> PostCommentResponse.builder()
-                .id(rs.getLong("comment_id"))
-                .content(rs.getString("comment_content"))
-                .image(rs.getString("comment_image"))
-                .imageId(rs.getString("comment_image_id"))
-                .createdAt(rs.getTimestamp("comment_created_at") != null
-                    ? ZonedDateTime.ofInstant(rs.getTimestamp("comment_created_at").toInstant(), ZoneId.systemDefault())
-                    : null)
-                .updatedAt(rs.getTimestamp("comment_updated_at") != null
-                    ? ZonedDateTime.ofInstant(rs.getTimestamp("comment_updated_at").toInstant(), ZoneId.systemDefault())
-                    : null)
-                .user(UserPostResponse.builder()
-                    .id(rs.getLong("user_id"))
-                    .fullname(rs.getString("fullname"))
-                    .username(rs.getString("username"))
-                    .image(rs.getString("user_image") != null ? rs.getString("user_image")
-                        : "https://api.dicebear.com/7.x/initials/svg?seed=" + rs.getString("username"))
-                    .build())
-                .build());
+            return namedParameterJdbcTemplate.query(sql, params, commentResponseRowMapper);
         } catch (Exception e) {
             log.error("Gagal mengambil komentar untuk post ID {}: {}", postId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
@@ -444,43 +501,6 @@ public class PostRepository {
             log.error("Gagal menghapus baris postingan ID {}: {}", postId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
-    }
-
-    /**
-     * Helper method privat untuk memetakan baris ResultSet database ke Objek DTO Java
-     */
-    private PostResponse mapRowToPostResponse(ResultSet rs) throws SQLException {
-
-        String userImageRaw = rs.getString("user_image");
-        String usernameRaw = rs.getString("username");
-
-        // Logika Fallback Dicebear 
-        String userImageFinal = userImageRaw != null ? userImageRaw
-            : "https://api.dicebear.com/7.x/initials/svg?seed=" + usernameRaw;
-        
-        // 1. Ekstrak data user dan masukkan ke UserPostResponse DTO
-        UserPostResponse user = UserPostResponse.builder()
-            .id(rs.getLong("user_id"))
-            .fullname(rs.getString("fullname"))
-            .username(rs.getString("username"))
-            .image(userImageFinal)
-            .build();
-
-        // 2. Ekstrak data post dan pasang objek user di dalamnya
-        return PostResponse.builder()
-            .id(rs.getLong("post_id"))
-            .caption(rs.getString("caption"))
-            .image(rs.getString("post_image"))
-            .imageId(rs.getString("post_image_id"))
-            .commentCount(rs.getLong("comment_count"))
-            .likeCount(rs.getLong("like_count"))
-            .bookmarkCount(rs.getLong("bookmark_count"))
-            .createdAt(rs.getTimestamp("post_created_at") != null ? 
-                    ZonedDateTime.ofInstant(rs.getTimestamp("post_created_at").toInstant(), ZoneId.systemDefault()) : null)
-            .updatedAt(rs.getTimestamp("post_updated_at") != null ? 
-                    ZonedDateTime.ofInstant(rs.getTimestamp("post_updated_at").toInstant(), ZoneId.systemDefault()) : null)
-            .user(user) // Menggabungkan relasi JOIN
-            .build();
     }
     
 }

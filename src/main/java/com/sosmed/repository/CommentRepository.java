@@ -7,10 +7,12 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -26,6 +28,44 @@ import lombok.extern.slf4j.Slf4j;
 public class CommentRepository {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    /**
+     * RowMapper manual untuk memetakan ResultSet ke objek CommentResponse.
+     */
+    private final RowMapper<CommentResponse> commentRowMapper = new RowMapper<CommentResponse>() {
+        @Override
+        public CommentResponse mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
+            String userImageRaw = rs.getString("user_image");
+            String usernameRaw = rs.getString("username");
+
+            String userImageFinal = userImageRaw != null ? userImageRaw
+                : "https://api.dicebear.com/7.x/initials/svg?seed=" + usernameRaw;
+
+            UserCommentResponse user = UserCommentResponse.builder()
+                .id(rs.getLong("user_id"))
+                .fullname(rs.getString("fullname"))
+                .username(usernameRaw)
+                .image(userImageFinal)
+                .build();
+
+            CommentResponse comment = new CommentResponse();
+            comment.setId(rs.getLong("comment_id"));
+            comment.setPostId(rs.getLong("post_id"));
+            comment.setContent(rs.getString("content"));
+            comment.setImage(rs.getString("comment_image"));
+            comment.setImageId(rs.getString("comment_image_id"));
+
+            if (rs.getTimestamp("comment_created_at") != null) {
+                comment.setCreatedAt(ZonedDateTime.ofInstant(rs.getTimestamp("comment_created_at").toInstant(), ZoneId.systemDefault()));
+            }
+            if (rs.getTimestamp("comment_updated_at") != null) {
+                comment.setUpdatedAt(ZonedDateTime.ofInstant(rs.getTimestamp("comment_updated_at").toInstant(), ZoneId.systemDefault()));
+            }
+
+            comment.setUser(user);
+            return comment;
+        }
+    };
 
     /**
      * Menyimpan komentar baru dan mengembalikan ID yang digenerate.
@@ -81,7 +121,7 @@ public class CommentRepository {
         MapSqlParameterSource params = new MapSqlParameterSource("commentId", commentId);
 
         try {
-            return namedParameterJdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> mapRowToCommentResponse(rs));
+            return namedParameterJdbcTemplate.queryForObject(sql, params, commentRowMapper);
         } catch (Exception e) {
             log.error("Gagal mengambil data response komentar ID {}: {}", commentId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
@@ -149,7 +189,7 @@ public class CommentRepository {
             .addValue("offset", offset);
 
         try {
-            return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> mapRowToCommentResponse(rs));
+            return namedParameterJdbcTemplate.query(sql, params, commentRowMapper);
         } catch (Exception e) {
             log.error("Gagal mengambil daftar komentar user ID {}: {}", userId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
@@ -184,34 +224,6 @@ public class CommentRepository {
             log.error("Gagal menghapus komentar ID {}: {}", commentId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
-    }
-
-    private CommentResponse mapRowToCommentResponse(ResultSet rs) throws SQLException {
-        String userImageRaw = rs.getString("user_image");
-        String usernameRaw = rs.getString("username");
-
-        String userImageFinal = userImageRaw != null ? userImageRaw
-            : "https://api.dicebear.com/7.x/initials/svg?seed=" + usernameRaw;
-
-        UserCommentResponse user = UserCommentResponse.builder()
-            .id(rs.getLong("user_id"))
-            .fullname(rs.getString("fullname"))
-            .username(rs.getString("username"))
-            .image(userImageFinal)
-            .build();
-
-        return CommentResponse.builder()
-            .id(rs.getLong("comment_id"))
-            .postId(rs.getLong("post_id"))
-            .content(rs.getString("content"))
-            .image(rs.getString("comment_image"))
-            .imageId(rs.getString("comment_image_id"))
-            .createdAt(rs.getTimestamp("comment_created_at") != null ?
-                ZonedDateTime.ofInstant(rs.getTimestamp("comment_created_at").toInstant(), ZoneId.systemDefault()) : null)
-            .updatedAt(rs.getTimestamp("comment_updated_at") != null ?
-                ZonedDateTime.ofInstant(rs.getTimestamp("comment_updated_at").toInstant(), ZoneId.systemDefault()) : null)
-            .user(user)
-            .build();
     }
     
 }

@@ -9,8 +9,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -25,6 +27,40 @@ import lombok.extern.slf4j.Slf4j;
 public class LikeRepository {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    /**
+     * RowMapper manual untuk memetakan ResultSet ke objek LikeInfo.
+     */
+    private final RowMapper<LikeInfo> likeInfoRowMapper = new RowMapper<LikeInfo>() {
+        @Override
+        public LikeInfo mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
+            Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
+            Timestamp updatedAtTimestamp = rs.getTimestamp("updated_at");
+
+            ZonedDateTime createdAt = createdAtTimestamp != null
+                ? ZonedDateTime.ofInstant(createdAtTimestamp.toInstant(), ZoneId.systemDefault())
+                : null;
+            ZonedDateTime updatedAt = updatedAtTimestamp != null
+                ? ZonedDateTime.ofInstant(updatedAtTimestamp.toInstant(), ZoneId.systemDefault())
+                : null;
+
+            String userImageRaw = rs.getString("user_image");
+            String usernameRaw = rs.getString("username");
+
+            String userImageFinal = userImageRaw != null ? userImageRaw
+                : "https://api.dicebear.com/7.x/initials/svg?seed=" + usernameRaw;
+
+            return LikeInfo.builder()
+                .postId(rs.getLong("post_id"))
+                .createdAt(createdAt)
+                .updatedAt(updatedAt)
+                .userId(rs.getLong("user_id"))
+                .fullname(rs.getString("fullname"))
+                .username(usernameRaw)
+                .userImage(userImageFinal)
+                .build();
+        }
+    };
 
     /**
      * Memeriksa apakah user sudah memberikan like pada postingan tertentu.
@@ -104,13 +140,8 @@ public class LikeRepository {
             .addValue("postId", postId);
 
         try {
-            LikeInfo info = namedParameterJdbcTemplate.query(sql, params, rs -> {
-                if (rs.next()) {
-                    return mapRowToLikeInfo(rs);
-                }
-                return null;
-            });
-            return Optional.ofNullable(info);
+            List<LikeInfo> results = namedParameterJdbcTemplate.query(sql, params, likeInfoRowMapper);
+            return results.stream().findFirst();
         } catch (Exception e) {
             log.error("Gagal mengambil info like untuk userId {} dan postId {}: {}", userId, postId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
@@ -159,33 +190,11 @@ public class LikeRepository {
             .addValue("offset", offset);
 
         try {
-            return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> mapRowToLikeInfo(rs));
+            return namedParameterJdbcTemplate.query(sql, params, likeInfoRowMapper);
         } catch (Exception e) {
             log.error("Gagal mengambil daftar user likes untuk post ID {} dengan paginasi: {}", postId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Other Error");
         }
-    }
-
-    private LikeInfo mapRowToLikeInfo(ResultSet rs) throws SQLException {
-        Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
-        Timestamp updatedAtTimestamp = rs.getTimestamp("updated_at");
-
-        ZonedDateTime createdAt = createdAtTimestamp != null 
-            ? ZonedDateTime.ofInstant(createdAtTimestamp.toInstant(), ZoneId.systemDefault()) 
-            : null;
-        ZonedDateTime updatedAt = updatedAtTimestamp != null 
-            ? ZonedDateTime.ofInstant(updatedAtTimestamp.toInstant(), ZoneId.systemDefault()) 
-            : null;
-
-        return LikeInfo.builder()
-            .postId(rs.getLong("post_id"))
-            .createdAt(createdAt)
-            .updatedAt(updatedAt)
-            .userId(rs.getLong("user_id"))
-            .fullname(rs.getString("fullname"))
-            .username(rs.getString("username"))
-            .userImage(rs.getString("user_image"))
-            .build();
     }
     
 }
