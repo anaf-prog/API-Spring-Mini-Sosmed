@@ -1,141 +1,206 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.5.14'
-	id 'io.spring.dependency-management' version '1.1.7'
-	id 'org.graalvm.buildtools.native' version '0.10.3'
+    id 'java'
+    id 'org.springframework.boot' version '3.5.14'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.graalvm.buildtools.native' version '0.10.6'
 }
 
 group = 'com.sosmed'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
-	implementation 'com.cloudinary:cloudinary-http5:2.3.2'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+    implementation 'com.cloudinary:cloudinary-http5:2.3.2'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
-	compileOnly 'org.projectlombok:lombok'
-	runtimeOnly 'org.postgresql:postgresql'
-	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.security:spring-security-test'
-	testCompileOnly 'org.projectlombok:lombok'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	testAnnotationProcessor 'org.projectlombok:lombok'
+    compileOnly 'org.projectlombok:lombok'
+    runtimeOnly 'org.postgresql:postgresql'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testCompileOnly 'org.projectlombok:lombok'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+// ============================================================
+// DETEKSI MODE BUILD
+// ============================================================
+def isNativeBuild = gradle.startParameter.taskNames.any { it.contains('native') }
+
+// ============================================================
+// JAR TASKS
+// ============================================================
 tasks.named('bootJar') {
-	enabled = false
-}
-
-def counterFile = file("$rootDir/build-counter.txt")
-def buildVersionProvider = providers.provider { 
-    project.ext.has("buildVersion") ? project.ext.buildVersion : "UNSET" 
-}
-
-tasks.register('updateBuildCounter') {
-	// Selalu jalan tiap build biar counter naik
-	outputs.upToDateWhen { false }
-	doLast {
-		def buildDate = new Date().format('yyyyMMdd')
-		def buildNumber = 1
-
-		if (counterFile.exists()) {
-			def parts = counterFile.text.trim().split('\\s+')
-			if (parts.size() == 2 && parts[0] == buildDate) {
-				buildNumber = (parts[1] as int) + 1
-			}
-		}
-
-		def buildVersion = "${buildDate}-${buildNumber}"
-		counterFile.text = "${buildDate} ${buildNumber}"
-		project.ext.buildVersion = buildVersion
-	}
+    enabled = true
 }
 
 tasks.named('jar') {
-	dependsOn 'updateBuildCounter'
-	enabled = true
-	archiveBaseName = 'Sosmed'
-	archiveClassifier = ''
-	archiveVersion = buildVersionProvider
-	inputs.property('buildVersion', buildVersionProvider)
-
-	manifest {
-		attributes(
-				'Main-Class': 'com.sosmed.SosmedApplication',
-				'Class-Path': configurations.runtimeClasspath.files.collect {
-					"lib/${it.name}"
-				}.join(' ')
-		)
-	}
+    dependsOn 'updateBuildCounter'
+    archiveBaseName = 'Sosmed'
+    archiveClassifier = ''
+    archiveVersion = providers.provider {
+        project.ext.has('buildVersion') ? project.ext.buildVersion : 'UNSET'
+    }
+    inputs.property('buildVersion', providers.provider {
+        project.ext.has('buildVersion') ? project.ext.buildVersion : 'UNSET'
+    })
+    manifest {
+        attributes(
+            'Main-Class': 'com.sosmed.SosmedApplication',
+            'Class-Path': configurations.runtimeClasspath.files.collect {
+                "lib/${it.name}"
+            }.join(' ')
+        )
+    }
 }
 
-tasks.named('test') {
-	useJUnitPlatform()
+// ============================================================
+// GRAALVM NATIVE IMAGE
+// ============================================================
+graalvmNative {
+    binaries {
+        main {
+            imageName = 'sosmed-native'
+            mainClass = 'com.sosmed.SosmedApplication'
+            buildArgs.add('--no-fallback')
+            buildArgs.add('-H:+ReportExceptionStackTraces')
+            
+            // Konfigurasi Inisialisasi Logging agar sinkron saat Build Time
+            buildArgs.add('--initialize-at-build-time=org.slf4j')
+            buildArgs.add('--initialize-at-build-time=ch.qos.logback')
+            
+            buildArgs.add('-H:+AddAllCharsets')
+        }
+    }
+    metadataRepository {
+        enabled = true
+    }
 }
 
+// ============================================================
+// BUILD COUNTER
+// ============================================================
+def counterFile = file("$rootDir/build-counter.txt")
+
+tasks.register('updateBuildCounter') {
+    outputs.upToDateWhen { false }
+    doLast {
+        def buildDate = new Date().format('yyyyMMdd')
+        def buildNumber = 1
+        if (counterFile.exists()) {
+            def parts = counterFile.text.trim().split('\\s+')
+            if (parts.size() == 2 && parts[0] == buildDate) {
+                buildNumber = (parts[1] as int) + 1
+            }
+        }
+        def buildVersion = "${buildDate}-${buildNumber}"
+        counterFile.text = "${buildDate} ${buildNumber}"
+        project.ext.buildVersion = buildVersion
+    }
+}
+
+// ============================================================
+// INSTALL TASKS (hanya untuk non-native build)
+// ============================================================
 tasks.register('copyDependencies', Copy) {
-	from configurations.runtimeClasspath.filter {
+    onlyIf { !isNativeBuild }
+    from configurations.runtimeClasspath.filter {
         !it.name.contains('spring-boot-devtools')
     }
-	into "$rootDir/install/lib"
+    into "$rootDir/install/lib"
 }
 
 tasks.register('copyJar', Copy) {
-	dependsOn tasks.named('jar')
-	from(tasks.named('jar').flatMap { it.archiveFile })
-	into "$rootDir/install"
+    onlyIf { !isNativeBuild }
+    dependsOn tasks.named('jar')
+    from(tasks.named('jar').flatMap { it.archiveFile })
+    into "$rootDir/install"
 }
 
 tasks.register('copyConfig', Copy) {
-	from 'src/main/resources'
-	include '**/*.yml', '**/*.properties', '**/*.xml', '**/*.sql'
-	exclude 'META-INF/**'
-	exclude 'static/**'
-	exclude 'templates/**'
-	into "$rootDir/install/config"
+    onlyIf { !isNativeBuild }
+    from 'src/main/resources'
+    include '**/*.yml', '**/*.properties', '**/*.xml', '**/*.sql'
+    exclude 'META-INF/**'
+    exclude 'static/**'
+    exclude 'templates/**'
+    into "$rootDir/install/config"
 }
 
 tasks.register('installApp') {
-	dependsOn 'copyDependencies', 'copyJar', 'copyConfig'
-	doLast {
+    onlyIf { !isNativeBuild }
+    dependsOn 'copyDependencies', 'copyJar', 'copyConfig'
+    doLast {
         def appProps = file("$rootDir/install/config/application.properties")
-        def content = appProps.text
-        content = content.replace(
-            'logging.config=classpath:logback-spring.xml',
-            '# logging.config=classpath:logback-spring.xml\nlogging.config=file:./config/logback-spring.xml'
-        )
-		content = content.replace(
-            'spring.sql.init.mode=always',
-            'spring.sql.init.mode=always\nspring.sql.init.schema-locations=file:./config/schema.sql'
-        )
-        appProps.text = content
+        if (appProps.exists()) {
+            def content = appProps.text
+            content = content.replace(
+                'logging.config=classpath:logback-spring.xml',
+                'logging.config=file:./config/logback-spring.xml'
+            )
+            content = content.replace(
+                'spring.sql.init.mode=always',
+                'spring.sql.init.mode=always\nspring.sql.init.schema-locations=file:./config/schema.sql'
+            )
+            appProps.text = content
+        }
     }
 }
 
+// ============================================================
+// CLEAN & BUILD CONTROL
+// ============================================================
 tasks.register('cleanInstall', Delete) {
-	delete "$rootDir/install"
+    delete "$rootDir/install"
 }
 
 tasks.named('clean') {
-	dependsOn 'cleanInstall'
+    dependsOn 'cleanInstall'
 }
 
 tasks.named('build') {
-	finalizedBy 'installApp'
+    if (!isNativeBuild) {
+        finalizedBy 'installApp'
+    }
+}
+
+// ============================================================
+// COMPILER OPTIONS
+// ============================================================
+tasks.withType(JavaCompile).configureEach {
+    options.incremental = false
+    options.compilerArgs << '-Xlint:unchecked' << '-Xlint:deprecation'
+}
+
+// ============================================================
+// BOOT RUN
+// ============================================================
+bootRun {
+    classpath = sourceSets.main.runtimeClasspath
+    sourceResources sourceSets.main
+    dependsOn tasks.named('compileJava')
+}
+
+// ============================================================
+// TEST
+// ============================================================
+tasks.named('test') {
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
 }
