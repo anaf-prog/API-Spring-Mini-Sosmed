@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
         ErrorResponse<String> response = ErrorResponse.<String>builder()
                 .code(HttpStatus.INTERNAL_SERVER_ERROR.value()) // HTTP 500
                 .status("FAILED")
-                .errors(exception.getMessage()) // Mengambil pesan 
+                .errors("Other Error")
                 .build();
 
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
