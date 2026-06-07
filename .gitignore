@@ -40,6 +40,9 @@ out/
 ### Install ###
 install/
 
+### Native Image GraalVM ###
+dist-native/
+
 ### logs ###
 logs/
 
