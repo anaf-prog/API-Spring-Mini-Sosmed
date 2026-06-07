@@ -28,5 +28,15 @@
     "name": "scalar.openapi.url",
     "type": "java.lang.String",
     "description": "A description for 'scalar.openapi.url'"
+  },
+  {
+    "name": "jwt-key-id",
+    "type": "java.lang.String",
+    "description": "A description for 'jwt-key-id'"
+  },
+  {
+    "name": "jwt-issuer",
+    "type": "java.lang.String",
+    "description": "A description for 'jwt-issuer'"
   }
 ]}
