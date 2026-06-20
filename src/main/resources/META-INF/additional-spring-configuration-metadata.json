@@ -38,5 +38,60 @@
     "name": "jwt-issuer",
     "type": "java.lang.String",
     "description": "A description for 'jwt-issuer'"
+  },
+  {
+    "name": "spring.ai.vertex.ai.gemini.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.vertex.ai.gemini.enabled'"
+  },
+  {
+    "name": "spring.ai.google.ai.studio.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.google.ai.studio.enabled'"
+  },
+  {
+    "name": "spring.ai.google.ai.studio.api-key",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.google.ai.studio.api-key'"
+  },
+  {
+    "name": "spring.ai.google.ai.studio.model",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.google.ai.studio.model'"
+  },
+  {
+    "name": "spring.ai.google.genai.api-key",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.google.genai.api-key'"
+  },
+  {
+    "name": "spring.ai.google.genai.chat.options.model",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.google.genai.chat.options.model'"
+  },
+  {
+    "name": "spring.ai.google.genai.chat.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.google.genai.chat.enabled'"
+  },
+  {
+    "name": "spring.ai.google.genai.model",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.google.genai.model'"
+  },
+  {
+    "name": "spring.ai.openai.api-key",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.openai.api-key'"
+  },
+  {
+    "name": "spring.ai.openai.base-url",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.openai.base-url'"
+  },
+  {
+    "name": "spring.ai.openai.chat.options.model",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.ai.openai.chat.options.model'"
   }
 ]}

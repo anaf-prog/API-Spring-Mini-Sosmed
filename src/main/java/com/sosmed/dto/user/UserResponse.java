@@ -28,5 +28,6 @@ public class UserResponse {
     private Long bookmarkCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String suggestedBio;
     
 }
